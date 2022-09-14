@@ -21,6 +21,9 @@ pipeline{
         NEXUS_LOGIN = 'nexuslogin'
         SONARSERVER = 'sonar-env'
         SONARSCANNER = 'sonarscanner'
+        registryCredentials = 'ecr:us-east-1:awscreds'
+        appRegistry = '554528680147.dkr.ecr.us-east-1.amazonaws.com/vprofileappimg'
+        vprofileRegistry = "https://554528680147.dkr.ecr.us-east-1.amazonaws.com/vprofileappimg"
     }
 
     stages{
@@ -43,26 +46,6 @@ pipeline{
         stage ('Checkstyle Analysis'){
             steps {
                 sh 'mvn checkstyle:checkstyle'
-            }
-        }
-
-        stage('UploadArtifact'){
-            steps{
-                nexusArtifactUploader(
-                    nexusVersion: 'nexus3',
-                    protocol: 'http',
-                    nexusUrl: "${NEXUSIP}:${NEXUSPORT}",
-                    groupId: 'QA',
-                    version: "${env.BUILD_ID}-${env.BUILD_TIMESTAMP}",
-                    repository: "${RELEASE_REPO}",
-                    credentialsId: "${NEXUS_LOGIN}",
-                    artifacts: [
-                        [artifactId: 'vproapp',
-                        classifier: '',
-                        file: 'target/vprofile-v2.war',
-                        type: 'war']
-                    ]
-                )
             }
         }
         
@@ -90,7 +73,48 @@ pipeline{
                 }
             }
         }
+
+        stage('UploadArtifact'){
+            steps{
+                nexusArtifactUploader(
+                    nexusVersion: 'nexus3',
+                    protocol: 'http',
+                    nexusUrl: "${NEXUSIP}:${NEXUSPORT}",
+                    groupId: 'QA',
+                    version: "${env.BUILD_ID}-${env.BUILD_TIMESTAMP}",
+                    repository: "${RELEASE_REPO}",
+                    credentialsId: "${NEXUS_LOGIN}",
+                    artifacts: [
+                        [artifactId: 'vproapp',
+                        classifier: '',
+                        file: 'target/vprofile-v2.war',
+                        type: 'war']
+                    ]
+                )
+            }
+        }
+
+        stage('Build App Image'){
+                steps{
+                    script{
+                        dockerImage = docker.build(appRegistry + ":$BUILD_NUMBER", "./Docer-files/app/multistage/")
+                    }
+                }
+
+        }
+
+        stage('Upload App Image'){
+            steps{
+                script{
+                    docker.withRegistry(vprofileRegistry, registryCredentials){
+                        dockerImage.push("$BUILD_NUMBER")
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
         
+
     }
     post {
         always{
