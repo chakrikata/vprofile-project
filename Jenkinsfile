@@ -21,7 +21,7 @@ pipeline{
                                 defaultValue: '',
                                 name: 'BUILDID',
                             ),
-                            STRING(
+                            string(
                                 defaultValue: '',
                                 name: 'TIME'
                             )
