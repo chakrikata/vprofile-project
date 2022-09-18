@@ -46,9 +46,9 @@ pipeline{
                             reponame: 'vprofile-release',
                             groupid: 'QA',
                             time: "${env.TIME}",
-                            build: "${env.BUILD}",
+                            build: "${env.BUILDID}",
                             artifactid: 'vproapp',
-                            vprofile_version: "vproapp-${env.BUILD}-${env.TIME}.war"
+                            vprofile_version: "vproapp-${env.BUILDID}-${env.TIME}.war"
                     ]
                     
                     ])  
