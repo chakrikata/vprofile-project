@@ -21,6 +21,7 @@ pipeline{
         NEXUS_LOGIN = 'nexuslogin'
         SONARSERVER = 'sonarserver'
         SONARSCANNER = 'sonarscanner'
+        NEXUSPASS = credentials('nexuspass')
     }
 
     stages{
@@ -88,6 +89,31 @@ pipeline{
                 timeout(time: 1, unit: 'HOURS'){
                     waitForQualityGate abortPipeline: true
                 }
+            }
+        }
+
+        stage('Ansible deploy to staging'){
+            steps{
+                   ansiblePlaybook([
+                    playbook: 'ansible/site.yml',
+                    inventory: 'ansible/stage.inventory', 
+                    credentialsId: 'applogin',
+                    colorized: true,
+                    installation: 'ansible',
+                    disableHostKeyChecking: true,
+                    extraVars: [
+                            USER: 'admin',
+                            PASS: "${NEXUSPASS}",
+                            nexusip: '172.31.93.78',
+                            reponame: 'vprofile-release',
+                            groupid: 'QA',
+                            time: "${env.BUILD_TIMESTAMP}",
+                            build: "${env.BUILD_ID}",
+                            artifactid: 'vproapp',
+                            vprofile_version: "vproapp-${env.BUILD_ID}-${env.BUILD_TIMESTAMP}.war"
+                    ]
+                    
+                    ])  
             }
         }
         
