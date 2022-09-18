@@ -4,95 +4,33 @@ def COLOR_MAP = [
 ]
 pipeline{
     agent any
-    tools {
-        maven "MAVEN3"
-        jdk "OracleJDK8"
-    }
+
 
     environment {
-        SNAP_REPO = 'vprofile-snapshot'
-        NEXUS_USER = 'admin'
-        NEXUS_PASS = 'admin'
-        RELEASE_REPO = 'vprofile-release'
-        CENTRAL_REPO = 'vpro-maven-central'
-        NEXUSIP = '172.31.93.78'
-        NEXUSPORT = '8081'
-        NEXUS_GRP_REPO='vpro-maven-group'
-        NEXUS_LOGIN = 'nexuslogin'
-        SONARSERVER = 'sonarserver'
-        SONARSCANNER = 'sonarscanner'
         NEXUSPASS = credentials('nexuspass')
     }
 
     stages{
-        stage('Build'){
+       
+        stage('Set up parameters'){
             steps{
-                sh 'mvn -s settings.xml -DskipTests install'
-            }
-            post {
-                success {
-                    echo "now archiving"
-                    archiveArtifacts artifacts: '**/*.war'
+                script{
+                    properties([
+                        parameters([
+                            string(
+                                defaultValue: '',
+                                name: 'BUILDID',
+                            ),
+                            STRING(
+                                defaultValue: '',
+                                name: 'TIME'
+                            )
+                        ])
+                    ])
                 }
             }
         }
-        stage ('Test'){
-            steps {
-                sh 'mvn -s settings.xml test'
-            }
-        }
-        stage ('Checkstyle Analysis'){
-            steps {
-                sh 'mvn -s settings.xml checkstyle:checkstyle'
-            }
-        }
-
-        stage('UploadArtifact'){
-            steps{
-                nexusArtifactUploader(
-                    nexusVersion: 'nexus3',
-                    protocol: 'http',
-                    nexusUrl: "${NEXUSIP}:${NEXUSPORT}",
-                    groupId: 'QA',
-                    version: "${env.BUILD_ID}-${env.BUILD_TIMESTAMP}",
-                    repository: "${RELEASE_REPO}",
-                    credentialsId: "${NEXUS_LOGIN}",
-                    artifacts: [
-                        [artifactId: 'vproapp',
-                        classifier: '',
-                        file: 'target/vprofile-v2.war',
-                        type: 'war']
-                    ]
-                )
-            }
-        }
-        
-        stage('Sonar Analysis') {
-            environment {
-                scannerHome = tool "${SONARSCANNER}"
-            }
-            steps {
-            withSonarQubeEnv("${SONARSERVER}") {
-               sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
-                   -Dsonar.projectName=vprofile-repo \
-                   -Dsonar.projectVersion=1.0 \
-                   -Dsonar.sources=src/ \
-                   -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
-                   -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                   -Dsonar.jacoco.reportsPath=target/jacoco.exec \
-                   -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
-                }
-            }
-        }
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 1, unit: 'HOURS'){
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-
-        stage('Ansible deploy to staging'){
+        stage('Ansible deploy to Prod'){
             steps{
                    ansiblePlaybook([
                     playbook: 'ansible/site.yml',
@@ -107,10 +45,10 @@ pipeline{
                             nexusip: '172.31.93.78',
                             reponame: 'vprofile-release',
                             groupid: 'QA',
-                            time: "${env.BUILD_TIMESTAMP}",
-                            build: "${env.BUILD_ID}",
+                            time: "${env.TIME}",
+                            build: "${env.BUILD}",
                             artifactid: 'vproapp',
-                            vprofile_version: "vproapp-${env.BUILD_ID}-${env.BUILD_TIMESTAMP}.war"
+                            vprofile_version: "vproapp-${env.BUILD}-${env.TIME}.war"
                     ]
                     
                     ])  
