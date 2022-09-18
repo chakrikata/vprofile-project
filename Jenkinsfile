@@ -21,6 +21,11 @@ pipeline{
         NEXUS_LOGIN = 'nexuslogin'
         SONARSERVER = 'sonarserver'
         SONARSCANNER = 'sonarscanner'
+        ARTIFACT_NAME = "vprofile-v${BUILD_ID}.WAR"
+        AWS_S3_BUCKET = 'chakrivprocicdbean'
+        AWS_EB_APP_NAME = 'vproapp1'
+        AWS_EB_APP_VERSION = "${BUILD_ID}"
+        AWS_EB_ENVIRONMENT= 'Vproapp1-env'
     }
 
     stages{
@@ -88,6 +93,14 @@ pipeline{
                 timeout(time: 1, unit: 'HOURS'){
                     waitForQualityGate abortPipeline: true
                 }
+            }
+        }
+
+        stage('Deploy to BeanStalk Staging'){
+            withAWS(credentials: 'awsbeancreds' , region: 'us-east-1'){
+                sh 'aws s3 cp ./target/vprofile-v2.war s3://$AWS_S3_BUCKET/$ARTIFACT_NAME'
+                sh 'aws elasticbeanstalk create-application-version --application-name $AWS_EB_APP_NAME --version-label $AWS_EB_APP_VERSION --source-bundle S3Bucket=$AWS_S3_BUCKET,S3key=$ARTIFACT_NAME'
+                sh 'aws elasticbeanstalk update-environment --aplication-name $AWS_EB_APP_NAME --environment-name $AWS_EB_ENVIRONMENT --version $AWS_EB_APP_VERSION'
             }
         }
         
