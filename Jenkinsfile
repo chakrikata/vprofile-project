@@ -1,5 +1,5 @@
 
-def buildnumber = Jenkins.instace.getItem('cicd-jenkins-bean-stage').lastSuccessfulBuild.number
+def buildnumber = Jenkins.instance.getItem('cicd-jenkins-bean-stage').lastSuccessfulBuild.number
 
 def COLOR_MAP = [
     'SUCCESS': 'good',
